@@ -1,11 +1,10 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"os"
-
-	// Import not working for some mysterious reason. Fix it
-	"pkg.go.dev/encoding/csv"
+	"strings"
 )
 
 // Gets the quiz file to be used
@@ -26,9 +25,28 @@ func set_quiz_file() string {
 
 }
 
-func main() {
-	file_name := set_quiz_file()
-	fmt.Println(file_name)
+func check_error(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
 
-	file := csv.Read(file_name)
+func main() {
+	// Setting file name and attempting to open the file
+	file_name := set_quiz_file()
+	dat, err := os.ReadFile(file_name)
+	check_error(err)
+
+	// Parsing the file to CSV
+	r := csv.NewReader(strings.NewReader(string(dat)))
+
+	/* Questions becomes a slice of string slices. questions[i] runs over all
+	questions/answers pairs; questions[i][0] is the question and questions[i][1]
+	is the answer.
+	*/
+	questions, err := r.ReadAll()
+	check_error(err)
+
+	fmt.Println(questions[0][0])
+
 }
