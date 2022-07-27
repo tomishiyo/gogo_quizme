@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -10,17 +11,14 @@ import (
 // Process the quiz file to be used
 // Defaults to problems.csv
 func set_quiz_file() string {
-	if len(os.Args) == 1 {
+	// flag.Args() gives remaining arguments after flag parsing.
+	remaining_args := flag.Args()
+	if len(remaining_args) == 0 {
 		return "quizzes/problems.csv"
 
-	} else if len(os.Args) == 2 {
-
-		return os.Args[1]
 	} else {
-		error_msg := "Usage: " + os.Args[0] + " <quizz_name>"
-		panic(error_msg)
+		return remaining_args[0]
 	}
-
 }
 
 func check_error(e error) {
@@ -68,11 +66,14 @@ func print_score(score, number_of_questions int) {
 	fmt.Printf("In total, %v questions were answered!\n", number_of_questions)
 	fmt.Println("")
 	fmt.Println("#######################################")
-	fmt.Printf("              You scored %v!          \n", score)
+	fmt.Printf("              You scored %v/%v!          \n", score, number_of_questions)
 	fmt.Println("#######################################")
 }
 
 func main() {
+	// Quiz time (settled by flag or defaulted to 30 seconds)
+	timer_time := flag.Int("time", 30, "Quiz timer")
+	flag.Parse()
 	// Setting file name and attempting to open the file
 	file_name := set_quiz_file()
 	dat, err := os.ReadFile(file_name)
@@ -89,6 +90,7 @@ func main() {
 	check_error(err)
 	number_of_questions := len(questions)
 
+	fmt.Println("Timer set to " + fmt.Sprint(*timer_time) + " seconds !")
 	score := run_quiz(questions)
 	print_score(score, number_of_questions)
 
