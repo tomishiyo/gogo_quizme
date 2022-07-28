@@ -6,7 +6,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
+
+var score int
+var time_is_up_c chan bool
 
 // Process the quiz file to be used
 // Defaults to problems.csv
@@ -27,21 +31,18 @@ func check_error(e error) {
 	}
 }
 
-// Runs the quiz: loop over all questions prompting the user for an answer
-func run_quiz(questions [][]string) (score int) {
-	var user_answer, answer, question_text string
+// Recieves a timer object and returns after elapsed time
+func run_timer(timer *time.Timer) {
+	isTime := <-timer.C
 
-	fmt.Println("")
-	fmt.Println(">>>>>>>>Welcome to GOGO_QUIZME!<<<<<<<<<<<<")
-	fmt.Println("")
-	fmt.Println("Rule N.1 : All numerical answers must be numbers!")
-	fmt.Println("For example, 1+1 must be answered as 2 not as Two")
-	fmt.Println("")
-	fmt.Println("Rule N.2: Ordinal numbers must be writen in abbreviated form!")
-	fmt.Println("For example, Neil Armstrong was the 1st man in the moon (as opossed to 'first')")
-	fmt.Println("")
-	fmt.Println("Have fun!")
+	if &isTime != nil {
+		fmt.Println(isTime)
+		time_is_up_c <- true
+	}
+}
 
+func make_questions(questions [][]string) {
+	var answer, user_answer, question_text string
 	for i, question := range questions {
 		question_text = "Question " + fmt.Sprint(i+1) + ": " + question[0]
 		fmt.Println(question_text)
@@ -56,6 +57,37 @@ func run_quiz(questions [][]string) (score int) {
 		if answer == user_answer {
 			score += 1
 		}
+	}
+}
+
+// Runs the quiz: loop over all questions prompting the user for an answer
+func run_quiz(questions [][]string, timer_time int) (score int) {
+	var user_ok bool
+
+	fmt.Println("")
+	fmt.Println(">>>>>>>>Welcome to GOGO_QUIZME!<<<<<<<<<<<<")
+	fmt.Println("")
+	fmt.Println("Rule N.1 : All numerical answers must be numbers!")
+	fmt.Println("For example, 1+1 must be answered as 2 not as Two")
+	fmt.Println("")
+	fmt.Println("Rule N.2: Ordinal numbers must be writen in abbreviated form!")
+	fmt.Println("For example, Neil Armstrong was the 1st man in the moon (as opossed to 'first')")
+	fmt.Println("")
+
+	fmt.Println("Timer set to " + fmt.Sprint(timer_time) + " seconds !")
+	fmt.Println("Press any key to start the quizz...")
+
+	fmt.Scanln(&user_ok)
+	fmt.Println("Have fun!")
+
+	// Starting timer
+	timer := time.NewTimer(time.Duration(timer_time * 1e9)) // Time in ns
+	go run_timer(timer)
+	go make_questions(questions)
+	time_is_up := <-time_is_up_c
+
+	if time_is_up == true {
+		return score
 	}
 
 	return score
@@ -90,8 +122,7 @@ func main() {
 	check_error(err)
 	number_of_questions := len(questions)
 
-	fmt.Println("Timer set to " + fmt.Sprint(*timer_time) + " seconds !")
-	score := run_quiz(questions)
+	score := run_quiz(questions, *timer_time)
 	print_score(score, number_of_questions)
 
 }
