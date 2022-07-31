@@ -31,37 +31,9 @@ func check_error(e error) {
 	}
 }
 
-// Recieves a timer object and returns after elapsed time
-func run_timer(timer *time.Timer) {
-	isTime := <-timer.C
-
-	if &isTime != nil {
-		fmt.Println(isTime)
-		time_is_up_c <- true
-	}
-}
-
-func make_questions(questions [][]string) {
-	var answer, user_answer, question_text string
-	for i, question := range questions {
-		question_text = "Question " + fmt.Sprint(i+1) + ": " + question[0]
-		fmt.Println(question_text)
-		// Print without the \n allows for the formatted input
-		fmt.Print(">>")
-		// The Scanln does not capture the \n input
-		fmt.Scanln(&user_answer)
-		// strings.ToLower remove caps problems
-		user_answer = strings.ToLower(user_answer)
-
-		answer = strings.ToLower(question[1])
-		if answer == user_answer {
-			score += 1
-		}
-	}
-}
-
 // Runs the quiz: loop over all questions prompting the user for an answer
 func run_quiz(questions [][]string, timer_time int) (score int) {
+	var answer, question_text string
 	var user_ok bool
 
 	fmt.Println("")
@@ -82,12 +54,37 @@ func run_quiz(questions [][]string, timer_time int) (score int) {
 
 	// Starting timer
 	timer := time.NewTimer(time.Duration(timer_time * 1e9)) // Time in ns
-	go run_timer(timer)
-	go make_questions(questions)
-	time_is_up := <-time_is_up_c
 
-	if time_is_up == true {
-		return score
+	for i, question := range questions {
+		question_text = "Question " + fmt.Sprint(i+1) + ": " + question[0]
+		fmt.Println(question_text)
+		// Print without the \n allows for the formatted input
+		fmt.Print(">>")
+		answerCh := make(chan string)
+		go func() {
+			var user_answer string
+			fmt.Scanf("%s\n", &user_answer)
+			// strings.ToLower remove caps problems
+			user_answer = strings.ToLower(user_answer)
+			user_answer = strings.TrimSpace(user_answer)
+			answerCh <- user_answer
+		}()
+
+		select {
+		// If timer, stop the program
+		case <-timer.C:
+			fmt.Println("")
+			fmt.Println("\nTime is up!")
+			fmt.Println("")
+			return score
+			// Else compute the score
+		case user_answer := <-answerCh:
+			answer = strings.ToLower(question[1])
+			if answer == user_answer {
+				score += 1
+			}
+		}
+
 	}
 
 	return score
